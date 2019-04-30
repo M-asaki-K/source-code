@@ -289,12 +289,19 @@ summary(compounds.svr)
 obj$best.parameters
 
 svm.predicted.y.train <- predict(compounds.svr)
+plot(preprocessed.y.train,svm.predicted.y.train,
+     xlab="Observed value",
+     ylab="Predicted value", main = "SVM train")
+abline(a=0, b=1)
 
-plot(preprocessed.y.train,svm.predicted.y.train)
 svm.r2.train <- cor(preprocessed.y.train,svm.predicted.y.train)**2
 
 svm.predicted.y.test <- predict(compounds.svr, newdata = multi.regression.x.test)
-plot(preprocessed.y.test, svm.predicted.y.test)
+plot(preprocessed.y.test, svm.predicted.y.test,
+     xlab="Observed value",
+     ylab="Predicted value", main = "SVM test")
+abline(a=0, b=1)
+
 svm.r2.test <- cor(preprocessed.y.test,svm.predicted.y.test)**2
 svm.r2.test
 
@@ -305,11 +312,19 @@ compounds.svr.vip <- svm(x.vip.train,preprocessed.y.train,gammma = obj.vip$best.
 
 svm.predicted.y.vip <- predict(compounds.svr.vip)
 
-plot(preprocessed.y.train,svm.predicted.y.vip)
+plot(preprocessed.y.train,svm.predicted.y.vip,
+     xlab="Observed value",
+     ylab="Predicted value", main = "SVM vip train")
+abline(a=0, b=1)
+
 svm.r2.train.vip <- cor(preprocessed.y.train,svm.predicted.y.vip)**2
 
 svm.predicted.y.test.vip <- predict(compounds.svr.vip, newdata = x.vip.test)
-plot(preprocessed.y.test, svm.predicted.y.test.vip)
+plot(preprocessed.y.test, svm.predicted.y.test.vip,
+     xlab="Observed value",
+     ylab="Predicted value", main = "SVM vip test")
+abline(a=0, b=1)
+
 svm.r2.test.vip <- cor(preprocessed.y.test,svm.predicted.y.test.vip)**2
 
 #------------------------SVM-uve------------------------------
@@ -319,11 +334,19 @@ compounds.svr.uve <- svm(x.uve.train,preprocessed.y.train,gammma = obj.uve$best.
 
 svm.predicted.y.uve <- predict(compounds.svr.uve)
 
-plot(preprocessed.y.train,svm.predicted.y.uve)
+plot(preprocessed.y.train,svm.predicted.y.uve,
+     xlab="Observed value",
+     ylab="Predicted value", main = "SVM uve train")
+abline(a=0, b=1)
+
 svm.r2.train.uve <- cor(preprocessed.y.train,svm.predicted.y.uve)**2
 
 svm.predicted.y.test.uve <- predict(compounds.svr.uve, newdata = x.uve.test)
-plot(preprocessed.y.test, svm.predicted.y.test.uve)
+plot(preprocessed.y.test, svm.predicted.y.test.uve,
+     xlab="Observed value",
+     ylab="Predicted value", main = "SVM uve test")
+abline(a=0, b=1)
+
 svm.r2.test.uve <- cor(preprocessed.y.test,svm.predicted.y.test.uve)**2
 
 #------------------------SVM-GA------------------------------
@@ -333,11 +356,19 @@ compounds.svr.ga <- svm(x.ga.train,preprocessed.y.train,gammma = obj.ga$best.par
 
 svm.predicted.y.ga <- predict(compounds.svr.ga)
 
-plot(preprocessed.y.train,svm.predicted.y.ga)
+plot(preprocessed.y.train,svm.predicted.y.ga,
+     xlab="Observed value",
+     ylab="Predicted value", main = "SVM ga train")
+abline(a=0, b=1)
+
 svm.r2.train.ga <- cor(preprocessed.y.train,svm.predicted.y.ga)**2
 
 svm.predicted.y.test.ga <- predict(compounds.svr.ga, newdata = x.ga.test)
-plot(preprocessed.y.test, svm.predicted.y.test.ga)
+plot(preprocessed.y.test, svm.predicted.y.test.ga,
+     xlab="Observed value",
+     ylab="Predicted value", main = "SVM ga test")
+abline(a=0, b=1)
+
 svm.r2.test.ga <- cor(preprocessed.y.test,svm.predicted.y.test.ga)**2
 
 #--------------------------------summary------------------------------------------------------------------------
