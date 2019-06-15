@@ -118,7 +118,7 @@ svm.r2.test.s.t
 #------------------------- ALE plot---------------------------------
 library(ALEPlot)
 
-yhats= function(model, olddata) {as.numeric(predict(model, as.vector(olddata)))}
+yhat= function(X.model, newdata) {as.numeric(predict(X.model, as.vector(newdata)))}
 ALE.1 <- ALEPlot(multi.regression.x.train.s.t, compounds.svr.s.t.e, pred.fun = yhat, J=1, K=100, NA.plot = TRUE)
 ALE.2 <- ALEPlot(multi.regression.x.train.s.t, compounds.svr.s.t.e, pred.fun = yhat, J=2, K=100, NA.plot = TRUE)
 ALE.3 <- ALEPlot(multi.regression.x.train.s.t, compounds.svr.s.t.e, pred.fun = yhat, J=3, K=100, NA.plot = TRUE)
