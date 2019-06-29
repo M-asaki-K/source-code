@@ -25,7 +25,7 @@ is.completes.t
 complete.compounds.t <- trimed.compounds.t[is.completes.t,]
 
 #--------------------divide into test and training data----------------------
-train_size = 1
+train_size = 0.6
 
 n = nrow(complete.compounds)
 #------------collect the data with n*train_size from the dataset------------
@@ -45,7 +45,7 @@ x.0 <- x.0[, (sd.is.not.0)]
 x.0.t <- x.0.t[, (sd.is.not.0)]
 x.0[200,]
 
-pc = 1000
+pc = 100
 rpca = prcomp(x = x.0,scale=T)
 x.0 <- as.data.frame(rpca$x[,c(1:pc)])
 
@@ -75,16 +75,17 @@ test_data.t <- cbind.data.frame(x.0.t[,])
 # Test data is *not* used when calculating the mean and std.
 # Use means and standard deviations from training set to normalize test set
 test_data.t <- scale(test_data.t, center = col_means_train, scale = col_stddevs_train)
+nrow(test_data.t)
 
 #--------------modeling------------------------
 build_model <- function() {
   
   model <- keras_model_sequential() %>%
-    layer_dense(units = 300, activation = "relu",
+    layer_dense(units = 30, activation = "relu",
                 input_shape = dim(train_data)[2]) %>%
     layer_batch_normalization() %>%
-    layer_dropout(rate = 0.25) %>%
-    layer_dense(units = 100, activation = "relu") %>%
+    layer_dropout(rate = 0.5) %>%
+    layer_dense(units = 30, activation = "relu") %>%
     layer_batch_normalization() %>%
     layer_dropout(rate = 0.25) %>%
     layer_dense(units = 1)
@@ -121,7 +122,7 @@ lr_schedule<-function(epoch,lr) {
         lr
   }
 cb_lr<-callback_learning_rate_scheduler(lr_schedule)
-early_stop <- callback_early_stopping(monitor = "val_loss", patience = 100)
+early_stop <- callback_early_stopping(monitor = "val_loss", patience = 30)
 
 # Fit the model and store training stats
 history <- model %>% fit(
@@ -141,4 +142,12 @@ plot(train_predictions, train_labels)
 r2train <- cor(train_predictions, train_labels)**2
 r2train
 
+test_predictions <- model %>% predict(test_data)
+plot(test_predictions, test_labels)
+r2test <- cor(test_predictions, test_labels)**2
+r2test
+
+
 test_predictions.t <- model %>% predict(test_data.t)
+test_predictions.t[1:13732]
+write.csv(test_predictions.t[1:13732])
