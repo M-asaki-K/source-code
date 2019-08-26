@@ -1,0 +1,329 @@
+---
+title: "Model ReverseAnalysis"
+author: "Masaki Open Lab"
+date: "2019年8月22日"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+Firstly we open the "Sample data GP" file and remove rows with missing values.
+
+```{r}
+#-----------pick up the file path--------------
+path <- "C:/Users/uni/Desktop/Folders/Data Science Seminar/sample data/Sample data GP.csv"
+
+#-----------read csv file as compounds--------------
+compounds <- read.csv(path)
+
+#-----------remove some columns if needed--------------
+trimed.compounds <- compounds[,]
+
+#-----------select rows without empty cells---------
+is.completes <- complete.cases(trimed.compounds)
+complete.compounds <- trimed.compounds[is.completes,]
+```
+
+Now let's check the complete dataset (first 5 rows).
+
+```{r}
+complete.compounds[c(1:5),]
+
+```
+
+Next we define the predictor variable x, y and remove the columns of 0 distribution (which is not importand in the prediction model).
+
+```{r}
+#-----------select x from the dataset-----------------
+x <- complete.compounds[,-c(1)]
+x <- cbind.data.frame(x)
+
+#-----------remove columns of 0 distribution from x----
+x.sds <- apply(x, 2, sd)
+sd.is.not.0 <- x.sds != 0
+x <- x[, sd.is.not.0]
+
+#-----------select y from the dataset------------------
+y <- complete.compounds[,c(1)]
+
+```
+
+Then we standarize both x and y below.
+
+```{r}
+#-----------standarization of y------------------------
+preprocessed.y <- (y - mean(y)) / sd(y)
+mean(preprocessed.y)
+sd(preprocessed.y)
+
+#-----------standarization of x------------------------
+apply(x, 2, mean)
+apply(x, 2, sd)
+preprocessed.x <- apply(x, 2, function(x) {(x - mean(x)) / sd(x)})
+preprocessed.x <- data.frame(preprocessed.x)
+
+#-----------compare the number of columns and rows--------------
+ncol(preprocessed.x)
+nrow(preprocessed.x)
+
+```
+
+Next we set up train / test datasets. Train data is used for constructing model, Test data is used for checking the prediction accuracy of the model.
+Today we set the train_size = 0.5 (50% of the dataset used for the train data).
+
+```{r}
+#-----------pick up columns if needed---------------------------
+multi.regression.x <- preprocessed.x[ , ]
+
+#-----------definition of multi.regression.compounds (used for MLR)--------
+multi.regression.compounds <- cbind(preprocessed.y, multi.regression.x)
+
+#--------------------divide into test and training data----------------------
+train_size = 0.5
+
+n = nrow(multi.regression.compounds)
+#------------collect the data with n*train_size from the dataset------------
+perm = sample(n, size = round(n * train_size))
+
+#-------------------training data----------------------------------------
+multi.regression.compounds.train <- multi.regression.compounds[perm, ]
+preprocessed.y.train <- multi.regression.compounds.train[,c(1)]
+multi.regression.x.train <- multi.regression.compounds.train[,-c(1)]
+#-----------------------test data----------------------------------------
+multi.regression.compounds.test <-multi.regression.compounds[-perm, ]
+preprocessed.y.test <- multi.regression.compounds.test[,c(1)]
+multi.regression.x.test <- multi.regression.compounds.test[,-c(1)]
+
+#-----------transform into data frame--------------------------
+multi.regression.compounds.train <- as.data.frame(multi.regression.compounds.train)
+
+```
+
+We use SVM model with stepwise variables selection method.
+If you're interested in the mechanism of the mechanism, please check the reference site.
+<https://www.youtube.com/watch?v=y41brn00nsM&list=PLqjwhcbgOLLjWHG5wiwBPpzeBr5hlfqP6&index=9>
+
+```{r}
+#-------------Installing SVM library---------------------------------
+library(e1071)
+library(kernlab)
+library(iml)
+library(devtools)
+
+#---------------------------stepwise variables selection--------------------------------------------
+#Generating initial dataset(train and test)
+multi.regression.compounds.train.s <- cbind(preprocessed.y.train, multi.regression.x.train[,])
+multi.regression.x.train.s <- multi.regression.x.train[,]
+multi.regression.compounds.test.s <- cbind(preprocessed.y.test,multi.regression.x.test)
+multi.regression.x.test.s <- multi.regression.x.test[,]
+
+#Definition of best performance data for each cases
+best.performance.cv <- matrix(data = 0, nrow = ncol(multi.regression.x.train), ncol = 3)
+best.performance.cv[,c(3)] <- seq(1:ncol(multi.regression.x.train))
+variables.step <- colnames(preprocessed.x)
+importances <- matrix(data = 0, nrow = ncol(multi.regression.x.train), ncol = ncol(multi.regression.x.train))
+rownames(importances) <- colnames(preprocessed.x)
+
+```
+
+From here starts the stepwise variable elimination step. we set the optimum number of the variables to 6, which was determined by myself, checking MAEcv of each steps (of cause too much/small number of variables causes poor model accuracy).
+
+```{r}
+for(j in 1:(ncol(preprocessed.x) - 7)){ #the process stops when variable number becomes 7 (determined from best performance curve)
+  
+  #SVM hyperparameter tuning  
+  #determining initial gamma by maximizing kernel matrix variance
+  gam <- matrix(data = 0, nrow = 31, ncol = 1)
+  for(k in -20:10){
+    rbf <- rbfdot(sigma = 2^k)
+    rbf
+    
+    asmat <- as.matrix(multi.regression.x.train.s)
+    asmat
+    
+    kern <- kernelMatrix(rbf, asmat)
+    sd(kern)
+    gam[c(k + 21),] <- sd(kern)
+  }
+  
+  hakata <- which.max(gam)
+  
+  obj.se <- tune.svm(preprocessed.y.train~., data = multi.regression.compounds.train.s, gamma = 2^(hakata - 21), cost = 3, epsilon = 2^(-10:0))
+  obj.sc <- tune.svm(preprocessed.y.train~., data = multi.regression.compounds.train.s, gamma = 2^(hakata - 21), cost = 2^(-5:10), epsilon = obj.se$best.parameters[,c(3)])
+  obj.s <- tune.svm(preprocessed.y.train~., data = multi.regression.compounds.train.s, gamma = 2^(-20:10), cost = obj.sc$best.parameters[,c(2)], epsilon = obj.se$best.parameters[,c(3)])
+  compounds.svr.s <- svm(multi.regression.x.train.s,preprocessed.y.train,gammma = obj.s$best.parameters[,c(1)], cost = obj.s$best.parameters[,c(2)], epsilon = obj.s$best.parameters[,c(3)])
+  summary(compounds.svr.s)
+  best.performance.cv[c(j), c(1)] <- obj.s$performances[which.min(obj.s$performances[,c(4)]), c(4)]
+  best.performance.cv[c(j), c(2)] <- obj.s$performances[which.min(obj.s$performances[,c(4)]), c(5)]
+  mod = Predictor$new(compounds.svr.s, data = multi.regression.x.train.s, y = preprocessed.y.train)
+  imp = FeatureImp$new(mod, loss = "mse", compare = "ratio", n.repetitions = 10)
+  importances[imp$results[,c(1)],c(j)] <- imp$results[,c(3)]
+  eliminate <- imp$results[-c(which.min(imp$results[,c(3)])), c(1)]
+  eliminate
+  
+  multi.regression.compounds.train.s <- cbind(preprocessed.y.train, multi.regression.x.train.s[,c(eliminate)])
+  multi.regression.x.train.s <- multi.regression.x.train.s[,c(eliminate)]
+  multi.regression.compounds.test.s <- cbind(preprocessed.y.test, multi.regression.x.test.s[,c(eliminate)])
+  multi.regression.x.test.s <- multi.regression.x.test.s[,c(eliminate)]
+  
+  #output selected variables for each steps
+  variables.step <- cbind(variables.step, colnames(multi.regression.x.train.s))
+  View(variables.step)
+  View(best.performance.cv)
+  View(importances)
+}
+
+```
+
+And these're the selected variables.
+
+```{r}
+#output the selected variables
+colnames(multi.regression.x.train.s)
+
+```
+
+OK, now let's check the optimized model prediction accuracy with testdata.
+The R2test ~ 0.75.
+
+```{r}
+multi.regression.compounds.train.s <- cbind(preprocessed.y.train, multi.regression.x.train[,c(variables.step[c(1:7), c(9)])])
+multi.regression.x.train.s <- multi.regression.x.train[,c(variables.step[c(1:7), c(9)])]
+multi.regression.compounds.test.s <- cbind(preprocessed.y.test, multi.regression.x.test[,c(variables.step[c(1:7), c(9)])])
+multi.regression.x.test.s <- multi.regression.x.test[,c(variables.step[c(1:7), c(9)])]
+
+#generating SVM model with selected variables
+gam <- matrix(data = 0, nrow = 31, ncol = 1)
+for(k in -20:10){
+  rbf <- rbfdot(sigma = 2^k)
+  rbf
+  
+  asmat <- as.matrix(multi.regression.x.train.s)
+  asmat
+  
+  kern <- kernelMatrix(rbf, asmat)
+  sd(kern)
+  gam[c(k + 21),] <- sd(kern)
+}
+
+hakata <- which.max(gam)
+
+obj.se.t.t <- tune.svm(preprocessed.y.train~., data = multi.regression.compounds.train.s, gamma = 2^(hakata - 21), cost = 3, epsilon = 2^(-10:0))
+obj.sc.t.t <- tune.svm(preprocessed.y.train~., data = multi.regression.compounds.train.s, gamma = 2^(hakata - 21), cost = 2^(-5:10), epsilon = obj.se.t.t$best.parameters[,c(3)])
+obj.s.t.t <- tune.svm(preprocessed.y.train~., data = multi.regression.compounds.train.s, gamma = 2^(-20:10), cost = obj.sc.t.t$best.parameters[,c(2)], epsilon = obj.se.t.t$best.parameters[,c(3)])
+obj.s.t.t$best.model
+compounds.svr.s.t.t <- svm(multi.regression.x.train.s,preprocessed.y.train,gammma = obj.s.t.t$best.parameters[,c(1)], cost = obj.s.t.t$best.parameters[,c(2)], epsilon = obj.s.t.t$best.parameters[,c(3)])
+summary(compounds.svr.s.t.t)
+obj.s.t.t$best.performance
+
+#testing the model accuracy
+svm.predicted.y.test.s.t.t <- predict(compounds.svr.s.t.t, newdata = multi.regression.x.test.s)
+plot(preprocessed.y.test, svm.predicted.y.test.s.t.t,
+     xlab="Observed value",
+     ylab="Predicted value", main = "SVM test")
+
+svm.r2.test.s.t.t <- cor(preprocessed.y.test,svm.predicted.y.test.s.t.t)**2
+svm.r2.test.s.t.t
+
+```
+
+From here we study reverse analysis of the obtained model. But be careful! We should determine the AD (Applicability Domain) of the model before proceeding to the analysis.
+We use two types of the definition for checking AD, first is "Maharanobis Distance". In this file we determine the oultlier of the newdata used for the reverse analysis as the data with Maharanobis Distance larger than the max value of the distance for the traindata.
+
+```{r}
+#--------------------------Bayesian optimization for hyperparameter tuning---------------------------
+
+Mahalanobis <- function(dat,                 # 基準群のデータ行列
+                        x)                      # 所属確率を計算するデータ行列
+{
+  dat <- subset(dat, complete.cases(dat))      # 欠損値を持つケースを除く
+  n <- nrow(dat)                               # ケース数
+  p <- ncol(dat)                               # 変数の個数
+  ss <- var(dat)*(n-1)/n                       # 分散・共分散行列
+  inv.ss <- solve(ss)                  # 分散共分散行列の逆行列
+  m <- colMeans(dat)                   # 各変数の平均値
+  dif <- t(t(x)-m)                     # 平均値からの偏差
+  d2 <- apply(dif, 1,
+              function(z) z %*% inv.ss %*% z) # マハラノビスの平方距離
+  P <- pchisq(d2, p, lower.tail=FALSE) # 所属確率
+  return(data.frame(d2=d2, P=P))
+}
+
+dat <- multi.regression.x.train.s[,] #固定する条件がある場合はここで除去
+outlier <- max(Mahalanobis(dat, data.frame(dat))[,c(1)])
+#maharanobis distによる外れ閾値
+
+```
+
+The second is "Data Density", which is described as the reciprocal of the distance between the data and each cluster's centers of gravity. Here the clustering is done by two steps; hierarchical clustering for determining the number of clusters and k-means clustering for calculating the Data Density.
+
+```{r}
+#ここからクラスタリングによる外れ値検出
+hist <- hclust(dist(multi.regression.x.train.s),method = "ward.D2")
+plot(hist)
+
+# 階層型クラスタリングからクラスタ数を手動指定して分類する（コサイン類似度、ウォード法）。
+clusnum <- 5
+clusters <- cutree(hist, k = clusnum)
+
+# クラスタiの中心点を算出
+clust.centroid = function(i, dat, clusters) {
+  ind = (clusters == i)
+  colMeans(dat[ind,])
+}
+
+# 全クラスタに適用
+centers <- sapply(unique(clusters), clust.centroid, multi.regression.x.train.s, clusters)
+
+# k-meansの実行。sapply()の結果だと行と列が逆なので、転置して引数に与える
+km <- kmeans(multi.regression.x.train.s, centers=t(centers)) 
+hem <- sqrt(rowSums(multi.regression.x.train.s - fitted(km)) ^ 2)
+outlierkm <- mean(hem) + 3*sd(hem)
+#kmeansによる外れ値検出
+
+nerv <- km$centers
+distances <- matrix(data = 0, nrow = clusnum, ncol = 1)
+minimumdistance <- function(v){
+  for(pp in 1:clusnum){
+  distances[c(pp), ] <- sqrt(rowSums(v - nerv[c(pp),]) ^ 2)
+  }
+  distances[c(which.min(distances)), ]}
+
+```
+
+Finally we proceed to the inverse analysis. We use rBayesianOptimization package here to maximize the response variable y.
+Please note that this package uses input data with the range of 0 to 1. Thus we scale the input values (a, b, c, d, e, f, g) for obtaining the range of -3 to 3.
+normally the package just searches the optimum condition, but we put some penarties for the data beyond AD(the predicted value becomes 0 if greater than 0).
+
+```{r}
+library(rBayesianOptimization)
+
+Gauss_holdout <- function(a, b, c, d, e, f, g){
+  daisen <- data.frame((a - 0.5)*6, (b - 0.5)*6, (c - 0.5)*6, (d - 0.5)*6, (e - 0.5)*6, (f - 0.5)*6, (g - 0.5)*6)
+{  if(Mahalanobis(dat, data.frame(daisen[,]))[,c(1)] > outlier){ #固定する条件がある場合はここでdaisenから除去
+    
+    model <- compounds.svr.s.t.t
+    Pred <- min(cbind(0, predict(model, data.frame(daisen)))) #最小化問題なら予測値に-1をかける
+  list(Score=Pred, Pred=Pred)
+}  else if(minimumdistance(daisen) > outlierkm){
+      model <- compounds.svr.s.t.t
+      Pred <- min(cbind(0, predict(model, data.frame(daisen)))) 
+      list(Score=Pred, Pred=Pred)
+#最小化問題なら予測値に-1をかける
+}    else{
+  model <- compounds.svr.s.t.t
+  Pred <- predict(model, data.frame(daisen))　#最小化問題なら予測値に-1をかける
+  
+    list(Score=Pred, Pred=Pred)}}
+    }
+
+opt_svm <- BayesianOptimization(Gauss_holdout,bounds=list(a=c(0,1),b=c(0,1), c=c(0,1), d=c(0,1), e=c(0,1), f=c(0,1), g=c(0,1)), init_points=30, n_iter=1, acq='ei', kappa=2.576,eps=0.0, verbose=TRUE)
+
+```
+
