@@ -13,7 +13,7 @@ is.completes <- complete.cases(trimed.compounds)
 is.completes
 
 complete.compounds <- trimed.compounds[is.completes,]
-View(complete.compounds)
+View(complete.compounds[c(1:5),])
 
 #-----------select x from the dataset-----------------
 x <- complete.compounds[,-c(1)]
@@ -72,87 +72,6 @@ library(e1071)
 library(kernlab)
 library(iml)
 library(devtools)
-
-#--------------------------variables elimination by importance threshold in SVM-------------------------------
-multi.regression.compounds.train.s.t <- cbind(preprocessed.y.train, multi.regression.x.train[,])
-multi.regression.x.train.s.t <- multi.regression.x.train[,]
-multi.regression.compounds.test.s.t <- cbind(preprocessed.y.test,multi.regression.x.test)
-multi.regression.x.test.s.t <- multi.regression.x.test[,]
-#model optimization with all variables
-#determining initial gamma by maximizing kernel matrix variance
-gam <- matrix(data = 0, nrow = 31, ncol = 1)
-for(k in -20:10){
-  rbf <- rbfdot(sigma = 2^k)
-  rbf
-  
-  asmat <- as.matrix(multi.regression.x.train.s.t)
-  asmat
-  
-  kern <- kernelMatrix(rbf, asmat)
-  sd(kern)
-  gam[c(k + 21),] <- sd(kern)
-}
-
-hakata <- which.max(gam)
-hakata
-
-obj.se.t <- tune.svm(preprocessed.y.train~., data = multi.regression.compounds.train.s.t, gamma = 2^(hakata - 21), cost = 3, epsilon = 2^(-10:0),tunecontrol = tune.control(cross = 5))
-obj.sc.t <- tune.svm(preprocessed.y.train~., data = multi.regression.compounds.train.s.t, gamma = 2^(hakata - 21), cost = 2^(-5:10), epsilon = obj.se.t$best.parameters[,c(3)],tunecontrol = tune.control(cross = 5))
-obj.s.t <- tune.svm(preprocessed.y.train~., data = multi.regression.compounds.train.s.t, gamma = 2^(-20:10), cost = obj.sc.t$best.parameters[,c(2)], epsilon = obj.se.t$best.parameters[,c(3)],tunecontrol = tune.control(cross = 5))
-compounds.svr.s.t <- svm(multi.regression.x.train.s.t,preprocessed.y.train,gammma = obj.s.t$best.parameters[,c(1)], cost = obj.s.t$best.parameters[,c(2)], epsilon = obj.s.t$best.parameters[,c(3)],tunecontrol = tune.control(cross = 5))
-
-#------------------------------feature importance calculation----------------------------------------------
-mod = Predictor$new(compounds.svr.s.t, data = multi.regression.x.train.s.t, y = preprocessed.y.train)
-imp = FeatureImp$new(mod, loss = "mse", compare = "ratio", n.repetitions = 10)
-imp$results
-plot(imp)
-
-#--------------------variable selection threshold by onesigma method------------------
-threshold <- min(imp$results[, c(3)]) + mean(imp$results[, c(4)] - imp$results[, c(2)]) / 4 * 6
-threshold
-kamakura <- imp$results[imp$results[, c(3)] > threshold, c(1)]
-kamakura
-
-#------------elimination of variables with low importance------------------------------
-  multi.regression.compounds.train.s.t <- cbind(preprocessed.y.train, multi.regression.x.train.s.t[, c(kamakura)])
-  multi.regression.x.train.s.t <- multi.regression.x.train.s.t[, c(kamakura)]
-  multi.regression.compounds.test.s.t <- cbind(preprocessed.y.test, multi.regression.x.test.s.t[, c(kamakura)])
-  multi.regression.x.test.s.t <- multi.regression.x.test.s.t[, c(kamakura)]
-
-#---------------------generating SVM model with selected variables----------------------
-gam <- matrix(data = 0, nrow = 31, ncol = 1)
-for(k in -20:10){
-  rbf <- rbfdot(sigma = 2^k)
-  rbf
-  
-  asmat <- as.matrix(multi.regression.x.train.s.t)
-  asmat
-  
-  kern <- kernelMatrix(rbf, asmat)
-  sd(kern)
-  gam[c(k + 21),] <- sd(kern)
-}
-
-hakata <- which.max(gam)
-hakata
-
-obj.se.t.e <- tune.svm(preprocessed.y.train~., data = multi.regression.compounds.train.s.t, gamma = 2^(hakata - 21), cost = 3, epsilon = 2^(-10:0),tunecontrol = tune.control(cross = 5))
-obj.sc.t.e <- tune.svm(preprocessed.y.train~., data = multi.regression.compounds.train.s.t, gamma = 2^(hakata - 21), cost = 2^(-5:10), epsilon = obj.se.t.e$best.parameters[,c(3)],tunecontrol = tune.control(cross = 5))
-obj.s.t.e <- tune.svm(preprocessed.y.train~., data = multi.regression.compounds.train.s.t, gamma = 2^(-20:10), cost = obj.sc.t.e$best.parameters[,c(2)], epsilon = obj.se.t.e$best.parameters[,c(3)],tunecontrol = tune.control(cross = 5))
-obj.s.t.e$best.model
-compounds.svr.s.t.e <- svm(multi.regression.x.train.s.t,preprocessed.y.train,gammma = obj.s.t.e$best.parameters[,c(1)], cost = obj.s.t.e$best.parameters[,c(2)], epsilon = obj.s.t.e$best.parameters[,c(3)])
-summary(compounds.svr.s.t.e)
-obj.s.t.e$best.performance
-
-#--------------------------testing the model accuracy------------------------------------------
-svm.predicted.y.test.s.t.e <- predict(compounds.svr.s.t.e, newdata = multi.regression.x.test.s.t)
-plot(preprocessed.y.test, svm.predicted.y.test.s.t.e,
-     xlab="Observed value",
-     ylab="Predicted value", main = "SVM test")
-abline(a=0, b=1)
-
-svm.r2.test.s.t.e <- cor(preprocessed.y.test,svm.predicted.y.test.s.t.e)**2
-svm.r2.test.s.t.e
 
 #---------------------------stepwise variables selection--------------------------------------------
 #Generating initial dataset(train and test)
@@ -223,7 +142,6 @@ multi.regression.x.train.s <- multi.regression.x.train[,c(variables.step[c(1:8),
 multi.regression.compounds.test.s <- cbind(preprocessed.y.test, multi.regression.x.test[,c(variables.step[c(1:8), c(12)])])
 multi.regression.x.test.s <- multi.regression.x.test[,c(variables.step[c(1:8), c(12)])]
 
-
 #generating SVM model with selected variables
 gam <- matrix(data = 0, nrow = 31, ncol = 1)
 for(k in -20:10){
@@ -257,25 +175,6 @@ abline(a=0, b=1)
 
 svm.r2.test.s.t.t <- cor(preprocessed.y.test,svm.predicted.y.test.s.t.t)**2
 svm.r2.test.s.t.t
-
-#------------------------- ALE plot---------------------------------
-library(ALEPlot)
-
-yhat= function(X.model, newdata) {as.numeric(predict(X.model, as.vector(newdata)))}
-ALE.1 <- ALEPlot(multi.regression.x.train.s, compounds.svr.s.t.t, pred.fun = yhat, J=1, K=10, NA.plot = TRUE)
-ALE.2 <- ALEPlot(multi.regression.x.train.s, compounds.svr.s.t.t, pred.fun = yhat, J=2, K=10, NA.plot = TRUE)
-ALE.3 <- ALEPlot(multi.regression.x.train.s, compounds.svr.s.t.t, pred.fun = yhat, J=3, K=10, NA.plot = TRUE)
-ALE.4 <- ALEPlot(multi.regression.x.train.s, compounds.svr.s.t.t, pred.fun = yhat, J=4, K=10, NA.plot = TRUE)
-ALE.5 <- ALEPlot(multi.regression.x.train.s, compounds.svr.s.t.t, pred.fun = yhat, J=5, K=10, NA.plot = TRUE)
-ALE.6 <- ALEPlot(multi.regression.x.train.s, compounds.svr.s.t.t, pred.fun = yhat, J=6, K=10, NA.plot = TRUE)
-ALE.7 <- ALEPlot(multi.regression.x.train.s, compounds.svr.s.t.t, pred.fun = yhat, J=7, K=10, NA.plot = TRUE)
-ALE.8 <- ALEPlot(multi.regression.x.train.s, compounds.svr.s.t.t, pred.fun = yhat, J=8, K=10, NA.plot = TRUE)
-ALE.24 <- ALEPlot(multi.regression.x.train.s, compounds.svr.s.t.t, pred.fun = yhat, J=c(2,4), K=10, NA.plot = TRUE)
-ALE.48 <- ALEPlot(multi.regression.x.train.s, compounds.svr.s.t.t, pred.fun = yhat, J=c(4,8), K=10, NA.plot = TRUE)
-ALE.28 <- ALEPlot(multi.regression.x.train.s, compounds.svr.s.t.t, pred.fun = yhat, J=c(2,8), K=10, NA.plot = TRUE)
-
-
-View(multi.regression.x.train.s)
 
 #--------------------------Bayesian optimization for hyperparameter tuning---------------------------
 library(rBayesianOptimization)
