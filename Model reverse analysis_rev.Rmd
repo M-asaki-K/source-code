@@ -1,7 +1,7 @@
 ---
 title: "Model ReverseAnalysis"
 author: "Masaki Open Lab"
-date: "2019”N8Œ22“ú"
+date: "2019å¹´8æœˆ22æ—¥"
 output: html_document
 ---
 
@@ -17,7 +17,7 @@ Firstly we open the "Sample data GP" file and remove rows with missing values.
 
 ```{r}
 #-----------pick up the file path--------------
-path <- "C:/Users/uni/Desktop/Folders/Data Science Seminar/sample data/Sample data GP.csv"
+path <- "/Sample data GP.csv"
 
 #-----------read csv file as compounds--------------
 compounds <- read.csv(path)
@@ -239,53 +239,53 @@ We use two types of the definition for checking AD, first is "Maharanobis Distan
 ```{r}
 #--------------------------Bayesian optimization for hyperparameter tuning---------------------------
 
-Mahalanobis <- function(dat,                 # Šî€ŒQ‚Ìƒf[ƒ^s—ñ
-                        x)                      # Š‘®Šm—¦‚ğŒvZ‚·‚éƒf[ƒ^s—ñ
+Mahalanobis <- function(dat,                 # åŸºæº–ç¾¤ã®ãƒ‡ãƒ¼ã‚¿è¡Œåˆ—
+                        x)                      # æ‰€å±ç¢ºç‡ã‚’è¨ˆç®—ã™ã‚‹ãƒ‡ãƒ¼ã‚¿è¡Œåˆ—
 {
-  dat <- subset(dat, complete.cases(dat))      # Œ‡‘¹’l‚ğ‚ÂƒP[ƒX‚ğœ‚­
-  n <- nrow(dat)                               # ƒP[ƒX”
-  p <- ncol(dat)                               # •Ï”‚ÌŒÂ”
-  ss <- var(dat)*(n-1)/n                       # •ªUE‹¤•ªUs—ñ
-  inv.ss <- solve(ss)                  # •ªU‹¤•ªUs—ñ‚Ì‹ts—ñ
-  m <- colMeans(dat)                   # Še•Ï”‚Ì•½‹Ï’l
-  dif <- t(t(x)-m)                     # •½‹Ï’l‚©‚ç‚Ì•Î·
+  dat <- subset(dat, complete.cases(dat))      # æ¬ æå€¤ã‚’æŒã¤ã‚±ãƒ¼ã‚¹ã‚’é™¤ã
+  n <- nrow(dat)                               # ã‚±ãƒ¼ã‚¹æ•°
+  p <- ncol(dat)                               # å¤‰æ•°ã®å€‹æ•°
+  ss <- var(dat)*(n-1)/n                       # åˆ†æ•£ãƒ»å…±åˆ†æ•£è¡Œåˆ—
+  inv.ss <- solve(ss)                  # åˆ†æ•£å…±åˆ†æ•£è¡Œåˆ—ã®é€†è¡Œåˆ—
+  m <- colMeans(dat)                   # å„å¤‰æ•°ã®å¹³å‡å€¤
+  dif <- t(t(x)-m)                     # å¹³å‡å€¤ã‹ã‚‰ã®åå·®
   d2 <- apply(dif, 1,
-              function(z) z %*% inv.ss %*% z) # ƒ}ƒnƒ‰ƒmƒrƒX‚Ì•½•û‹——£
-  P <- pchisq(d2, p, lower.tail=FALSE) # Š‘®Šm—¦
+              function(z) z %*% inv.ss %*% z) # ãƒãƒãƒ©ãƒãƒ“ã‚¹ã®å¹³æ–¹è·é›¢
+  P <- pchisq(d2, p, lower.tail=FALSE) # æ‰€å±ç¢ºç‡
   return(data.frame(d2=d2, P=P))
 }
 
-dat <- multi.regression.x.train.s[,] #ŒÅ’è‚·‚éğŒ‚ª‚ ‚éê‡‚Í‚±‚±‚Åœ‹
+dat <- multi.regression.x.train.s[,] #å›ºå®šã™ã‚‹æ¡ä»¶ãŒã‚ã‚‹å ´åˆã¯ã“ã“ã§é™¤å»
 outlier <- max(Mahalanobis(dat, data.frame(dat))[,c(1)])
-#maharanobis dist‚É‚æ‚éŠO‚êè‡’l
+#maharanobis distã«ã‚ˆã‚‹å¤–ã‚Œé–¾å€¤
 
 ```
 
 The second is "Data Density", which is described as the reciprocal of the distance between the data and each cluster's centers of gravity. Here the clustering is done by two steps; hierarchical clustering for determining the number of clusters and k-means clustering for calculating the Data Density.
 
 ```{r}
-#‚±‚±‚©‚çƒNƒ‰ƒXƒ^ƒŠƒ“ƒO‚É‚æ‚éŠO‚ê’lŒŸo
+#ã“ã“ã‹ã‚‰ã‚¯ãƒ©ã‚¹ã‚¿ãƒªãƒ³ã‚°ã«ã‚ˆã‚‹å¤–ã‚Œå€¤æ¤œå‡º
 hist <- hclust(dist(multi.regression.x.train.s),method = "ward.D2")
 plot(hist)
 
-# ŠK‘wŒ^ƒNƒ‰ƒXƒ^ƒŠƒ“ƒO‚©‚çƒNƒ‰ƒXƒ^”‚ğè“®w’è‚µ‚Ä•ª—Ş‚·‚éiƒRƒTƒCƒ“—Ş—“xAƒEƒH[ƒh–@jB
+# éšå±¤å‹ã‚¯ãƒ©ã‚¹ã‚¿ãƒªãƒ³ã‚°ã‹ã‚‰ã‚¯ãƒ©ã‚¹ã‚¿æ•°ã‚’æ‰‹å‹•æŒ‡å®šã—ã¦åˆ†é¡ã™ã‚‹ï¼ˆã‚³ã‚µã‚¤ãƒ³é¡ä¼¼åº¦ã€ã‚¦ã‚©ãƒ¼ãƒ‰æ³•ï¼‰ã€‚
 clusnum <- 5
 clusters <- cutree(hist, k = clusnum)
 
-# ƒNƒ‰ƒXƒ^i‚Ì’†S“_‚ğZo
+# ã‚¯ãƒ©ã‚¹ã‚¿iã®ä¸­å¿ƒç‚¹ã‚’ç®—å‡º
 clust.centroid = function(i, dat, clusters) {
   ind = (clusters == i)
   colMeans(dat[ind,])
 }
 
-# ‘SƒNƒ‰ƒXƒ^‚É“K—p
+# å…¨ã‚¯ãƒ©ã‚¹ã‚¿ã«é©ç”¨
 centers <- sapply(unique(clusters), clust.centroid, multi.regression.x.train.s, clusters)
 
-# k-means‚ÌÀsBsapply()‚ÌŒ‹‰Ê‚¾‚Æs‚Æ—ñ‚ª‹t‚È‚Ì‚ÅA“]’u‚µ‚Äˆø”‚É—^‚¦‚é
+# k-meansã®å®Ÿè¡Œã€‚sapply()ã®çµæœã ã¨è¡Œã¨åˆ—ãŒé€†ãªã®ã§ã€è»¢ç½®ã—ã¦å¼•æ•°ã«ä¸ãˆã‚‹
 km <- kmeans(multi.regression.x.train.s, centers=t(centers)) 
 hem <- sqrt(rowSums(multi.regression.x.train.s - fitted(km)) ^ 2)
 outlierkm <- mean(hem) + 3*sd(hem)
-#kmeans‚É‚æ‚éŠO‚ê’lŒŸo
+#kmeansã«ã‚ˆã‚‹å¤–ã‚Œå€¤æ¤œå‡º
 
 nerv <- km$centers
 distances <- matrix(data = 0, nrow = clusnum, ncol = 1)
@@ -306,19 +306,19 @@ library(rBayesianOptimization)
 
 Gauss_holdout <- function(a, b, c, d, e, f, g){
   daisen <- data.frame((a - 0.5)*6, (b - 0.5)*6, (c - 0.5)*6, (d - 0.5)*6, (e - 0.5)*6, (f - 0.5)*6, (g - 0.5)*6)
-{  if(Mahalanobis(dat, data.frame(daisen[,]))[,c(1)] > outlier){ #ŒÅ’è‚·‚éğŒ‚ª‚ ‚éê‡‚Í‚±‚±‚Ådaisen‚©‚çœ‹
+{  if(Mahalanobis(dat, data.frame(daisen[,]))[,c(1)] > outlier){ #å›ºå®šã™ã‚‹æ¡ä»¶ãŒã‚ã‚‹å ´åˆã¯ã“ã“ã§daisenã‹ã‚‰é™¤å»
     
     model <- compounds.svr.s.t.t
-    Pred <- min(cbind(0, predict(model, data.frame(daisen)))) #Å¬‰»–â‘è‚È‚ç—\‘ª’l‚É-1‚ğ‚©‚¯‚é
+    Pred <- min(cbind(0, predict(model, data.frame(daisen)))) #æœ€å°åŒ–å•é¡Œãªã‚‰äºˆæ¸¬å€¤ã«-1ã‚’ã‹ã‘ã‚‹
   list(Score=Pred, Pred=Pred)
 }  else if(minimumdistance(daisen) > outlierkm){
       model <- compounds.svr.s.t.t
       Pred <- min(cbind(0, predict(model, data.frame(daisen)))) 
       list(Score=Pred, Pred=Pred)
-#Å¬‰»–â‘è‚È‚ç—\‘ª’l‚É-1‚ğ‚©‚¯‚é
+#æœ€å°åŒ–å•é¡Œãªã‚‰äºˆæ¸¬å€¤ã«-1ã‚’ã‹ã‘ã‚‹
 }    else{
   model <- compounds.svr.s.t.t
-  Pred <- predict(model, data.frame(daisen))@#Å¬‰»–â‘è‚È‚ç—\‘ª’l‚É-1‚ğ‚©‚¯‚é
+  Pred <- predict(model, data.frame(daisen))ã€€#æœ€å°åŒ–å•é¡Œãªã‚‰äºˆæ¸¬å€¤ã«-1ã‚’ã‹ã‘ã‚‹
   
     list(Score=Pred, Pred=Pred)}}
     }
