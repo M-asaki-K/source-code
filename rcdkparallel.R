@@ -14,7 +14,7 @@ compounds <- read.csv(path)
 View(compounds)
 
 #-----------remove some columns if needed--------------
-trimed.compounds <- compounds[,c(2:4)] #choose smiles, EA and IE
+trimed.compounds <- compounds[,c(2,3,5:11)] #choose smiles, EA and IE
 
 #-----------select rows without empty cells---------
 is.completes <- complete.cases(trimed.compounds)
@@ -28,12 +28,11 @@ df2 <- complete.compounds
 df2
 
 ### SPLIT DATA INTO K FOLDS ###
-set.seed(2016)
-df2$fold <- caret::createFolds(1:nrow(df2), k = params, list = FALSE)
-max(df2$fold)
+n <- params
+dfchunk <- split(df2, factor(sort(rank(row.names(df2))%%n)))
 
 out <- foreach(j = 1:params, .combine = rbind, .inorder = FALSE, .packages = c("rcdk", "rcdklibs")) %dopar% {
-  test <- df2[df2$fold == j, ]
+  test <- dfchunk[[j]]
   mols <- parse.smiles(as.character(test[, c(1)]))
   dnames <- get.desc.names('constitutional')
   dnames2 <- get.desc.names('electronic')
